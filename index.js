@@ -11,6 +11,7 @@ Student = require('./models/students.js');
 
 /* Routes */
 require('./routes/register.js')(app);
+require('./routes/login.js')(app);
 
 app.listen(port, function() {
     console.log('Server started at port ' + port );
