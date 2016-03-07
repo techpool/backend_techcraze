@@ -8,6 +8,10 @@ var pendingRequestsSchema = new mongoose.Schema({
     partnerEventId: {
         type: String,
         required: true
+    },
+    eventName: {
+        type: String,
+        required: true
     }
 });
 

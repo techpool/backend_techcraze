@@ -8,7 +8,6 @@ module.exports = function (app) {
 			// If partners are present for the user
 			// iterate over them to find whether they are already registered or not
 			var partners = body.partners;
-			console.log(body);
 
 			// First check whether the applied person is already registered with the same event or not
 			Events.findOne({
@@ -25,7 +24,7 @@ module.exports = function (app) {
 					res.json({
 						status: 'failed',
 						addInfo: 'Already registered in this event'
-					})
+					});
 				} else {
 
 					// Else he is a new participant forthe event
@@ -71,12 +70,13 @@ module.exports = function (app) {
 												if (duplicateStudent) {
 													var user = {
 														status: 'failed',
-														details: partner
+														details: partner,
+														addInfo: 'User already registered in this event'
 													}
 													jsonToSend.push(user);
+													iteratenext(null);
 												} else {
-
-
+													
 													// If the student is already registered
 													// Create an event table for him as well
 
@@ -115,26 +115,52 @@ module.exports = function (app) {
 										} else {
 											// TODO: Send an invitation mail to the partner for registration
 
-											var pendingUser = new Pending({
-												emailId: partner,
-												partnerEventId: savedParentObj._id
-											});
-
-											pendingUser.save(function(err, savedObj) {
+											// Check whether the partner is in pending list
+											Pending.findOne({
+												$and: [{
+													eventName: body.name
+												},{
+													emailId: partner
+												}]
+											}).exec(function (err, pendingStudent) {
+												console.log(pendingStudent);
 												if (err) {
-													console.log(err)
+													console.log(err);
 												} else {
-													// Partner Saved in Pending User's list
-													// Move over to the next user
+													if (pendingStudent) {
+														var user = {
+															status: 'failed',
+															details: partner,
+															addInfo: 'User already in pending list with this event'
+														}
+														jsonToSend.push(user);
+														iteratenext(null);
+													} else {
+														var pendingUser = new Pending({
+															emailId: partner,
+															partnerEventId: savedParentObj._id,
+															eventName: body.name
+														});
 
-													var user = {
-														status: 'pending',
-														details: partner
+														pendingUser.save(function(err, savedObj) {
+															if (err) {
+																console.log(err)
+															} else {
+																// Partner Saved in Pending User's list
+																// Move over to the next user
+
+																var user = {
+																	status: 'pending',
+																	details: partner
+																}
+																jsonToSend.push(user);
+
+
+																iteratenext(null);
+															}
+														});
+														
 													}
-													jsonToSend.push(user);
-
-
-													iteratenext(null);
 												}
 											});
 
@@ -146,10 +172,7 @@ module.exports = function (app) {
 									console.log(err);
 								} else {
 									// All partners has been invited or added to the list of events
-									res.json({
-										status: 'success',
-										addInfo: 'All partners has been registered along with the user'
-									});
+									res.json(jsonToSend);
 								}
 							})
 						}
@@ -160,25 +183,46 @@ module.exports = function (app) {
 			
 			// In case there are no partners just save the current user
 
-			var parentEvent = new Events({
-				name: body.name,
-				emailId: body.emailId,
-				partners: null,
-				paid: false
-			});
-
-			parentEvent.save(function(err, savedParentObj) {
+			Events.findOne({
+				$and: [{
+					name: body.name
+				},{
+					emailId: student.emailId
+				}]
+			}).exec(function(err, event) {
 				if (err) {
 					console.log(err);
 				} else {
-					// User has been registered successfully for the event
+					if (event) {
+						// The student is already registered so canel the whole stuff
+						// and send a failure message
+						res.json({
+							status: 'failed',
+							addInfo: 'Already registered in this event'
+						});
+					} else {
+						var parentEvent = new Events({
+							name: body.name,
+							emailId: body.emailId,
+							partners: null,
+							paid: false
+						});
 
-					res.json({
-						status: 'success',
-						addInfo: 'User has been registered successfully'
-					});
+						parentEvent.save(function(err, savedParentObj) {
+							if (err) {
+								console.log(err);
+							} else {
+								// User has been registered successfully for the event
+
+								res.json({
+									status: 'success',
+									addInfo: 'User has been registered successfully'
+								});
+							}
+						})
+					}
 				}
-			})
+			});
 
 		}
 	});
