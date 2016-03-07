@@ -1,4 +1,21 @@
 module.exports = function (app) {
+
+    app.get('/login', function (req, res) {
+        var sess = req.session;
+        if (sess.emailId) {
+            res.json({
+                status: 'success',
+                addInfo: 'Already Logged In'
+            })
+        } else {
+            res.json({
+                status: 'failed',
+                addInfo: 'Please Log In'
+            });
+        }
+    });
+
+
     app.post('/login', function (req, res) {
 
         var body = req.body;
